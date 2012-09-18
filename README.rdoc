@@ -1,0 +1,91 @@
+= MetaField
+
+Author:: Yuichi Takeuchi uzuki05@takeyu-web.com
+Website:: http://takeyu-web.com/
+Copyright:: Copyright 2012 Yuichi Takeuchi
+License:: MIT-LICENSE.
+
+もっと柔軟にメタデータを付けたい。いちいちカラムを増やしたくない。
+
+== Installation
+
+   gem 'meta_field'
+
+=== Post Instration
+
++ rails g meta_field:migration
++ rake db:migrate
+
+== Usage
+
+=== メタ属性の定義
+
+モデルクラスで meta_field を宣言します。
+
+  class Book < ActiveRecord::Base
+    meta_field :released_at, :datetime
+    meta_attr :page, :integer, index: false # meta_attr は meta_field の別名
+    meta_field :note, :text, default: '(none)'
+  end
+
+STIを使うこともできます。親のメタ属性は子でも使用できます。
+
+  class Animal < ActiveRecord::Base
+    meta_field :name, :string
+  end
+
+  class Dog < Animal
+    meta_field :pedigree
+  end
+
+  class Cat < Animal
+  end
+
+=== メタ属性の使用
+
+宣言した属性名のsetter/getterが提供されます。
+
+  animal.name #=> nil
+  animal.name = "Pochi"
+  animal.name #=> "Pochi"
+  animal.save
+  Animal.find(animal.id).name #=> "Pochi"
+
+=== メタ属性による検索
+
+meta_joinスコープを利用できます。
+
+meta_joinを使うと、メタ属性を使って検索したり並び替えたりするためのサブクエリがJOINされます。
+
+  # released_atの降順でソート
+  Book.meta_join(:released_at).order('released_at DESC')
+  
+  # priceの昇順、同一の場合はreleased_atの降順でソート
+  Book.meta_join(:released_at, :price).order('price ASC, released_at DESC')
+
+  # priceで検索
+  Book.meta_join(:price).where(Arel.sql('price BETWEEN 1000 AND 2000')).order('price ASC')
+  # メタ属性でない通常の属性と組み合わせた検索もできます。
+  Book.meta_join(:price).where(t.arel_table[:hoge].matches('%HOGE%').and(Arel.sql('price BETWEEN 1000 AND 2000'))).order('price ASC')
+
+JOIN対象を少なくするために、JOINの前に検索しておきたい場合は、 meta_join に、属性名をキーに、検索条件を値とするハッシュを渡します。
+
+  # released_atが1年前より新しものを検索しからJOINし、価格の昇順でソート
+  Book.meta_join(:released_at: Book.meta[:released_at].gt(1.years.ago)).meta_join(:price).order(:price)
+  # または、検索条件無し=nilとして
+  Book.meta_join(:released_at: Book.meta[:released_at].gt(1.years.ago), price: nil).order(:price)
+
+== インデックスの使用
+
+検索のためのINDEXは、デフォルトで値に対して使用されます。（:text / :binary を除く）
+検索が不要なメタ属性は index: false とすることで、明示的にインデックスの使用をキャンセルできます。
+
+注意：インデックスを使用する属性と使用しない属性では、利用されるカラムが異なるため、途中からインデックスの使用・不使用を変更すると、変更前の値を取得できなくなります。
+
+== 注意
+
+- 仕様変更があっても泣かない。
+
+- バグっても泣かない。
+
+- 何が起きても責任はとれません。
