@@ -9,12 +9,12 @@ Gem::Specification.new do |s|
   s.version     = MetaField::VERSION
   s.authors     = ["Yuichi Takeuchi"]
   s.email       = ["uzuki05@takeyu-web.com"]
-  s.homepage    = "TODO"
-  s.summary     = "TODO: Summary of MetaField."
-  s.description = "TODO: Description of MetaField."
+  s.homepage    = "http://takeyu-web.com/"
+  s.summary     = "ActiveRecord meta_field for Rails 3"
+  s.description = "ActiveRecord meta_field for Rails 3"
 
   s.files = Dir["{app,config,db,lib}/**/*"] + ["MIT-LICENSE", "Rakefile", "README.rdoc"]
   s.test_files = Dir["test/**/*"]
 
-  s.add_dependency "rails", "~> 3.2.8"
+  s.add_dependency "rails", "~> 3.2.0"
 end

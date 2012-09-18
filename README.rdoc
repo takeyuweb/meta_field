@@ -9,12 +9,13 @@ License:: MIT-LICENSE.
 
 == Installation
 
-   gem 'meta_field'
+  # your Gemfile
+  gem 'meta_field'
 
 === Post Instration
 
-+ rails g meta_field:migration
-+ rake db:migrate
+  $ rails g meta_field:migration
+  $ rake db:migrate
 
 == Usage
 
@@ -68,19 +69,46 @@ meta_joinを使うと、メタ属性を使って検索したり並び替えた�
   # メタ属性でない通常の属性と組み合わせた検索もできます。
   Book.meta_join(:price).where(t.arel_table[:hoge].matches('%HOGE%').and(Arel.sql('price BETWEEN 1000 AND 2000'))).order('price ASC')
 
-JOIN対象を少なくするために、JOINの前に検索しておきたい場合は、 meta_join に、属性名をキーに、検索条件を値とするハッシュを渡します。
+JOIN対象を少なくするために、JOINの前に検索しておきたい場合は、 .meta_join に、属性名をキーに、検索条件を値とするハッシュを渡します。
 
   # released_atが1年前より新しものを検索しからJOINし、価格の昇順でソート
   Book.meta_join(:released_at: Book.meta[:released_at].gt(1.years.ago)).meta_join(:price).order(:price)
   # または、検索条件無し=nilとして
   Book.meta_join(:released_at: Book.meta[:released_at].gt(1.years.ago), price: nil).order(:price)
 
+.meta[:released_at] は、メタ属性で検索を行う場合に、そのままではメタ属性の型毎に別々のカラムに入っていたり非常に扱いにくいため、これを緩和するプロキシオブジェクトを返します。
+.meta_join内で、Arelを使った条件組み立てを行う際に、.arel_table[:hoge]と同じ感じで使用します。
+
+
+== 関連先モデルのメタ属性による検索
+
+サブクエリのJOINを使用して下さい。
+
+  # 21歳から39歳の著者の本を出版日の降順で取り出す
+  # 「21歳から39歳の著者」を検索するサブクエリ組み立て
+  books_table = Book.arel_table
+  selected_authors_table = Author.meta_join(age: Author.meta[:age].gt(20).and(Author.meta[:age].lt(40))).arel.as('selected_authors')
+  # JOINして、「出版日の降順」のSQLを組み立てる
+  sql = Book.meta_join(:released_at).arel
+    .join(selected_authors_table, Arel::Nodes::InnerJoin)
+    .on(books_table[:author_id].eq(selected_authors_table[:id]))
+    .order('released_at DESC').to_sql
+  # 検索実行
+  books = Book.find_by_sql(sql)
+
+
 == インデックスの使用
 
 検索のためのINDEXは、デフォルトで値に対して使用されます。（:text / :binary を除く）
 検索が不要なメタ属性は index: false とすることで、明示的にインデックスの使用をキャンセルできます。
 
-注意：インデックスを使用する属性と使用しない属性では、利用されるカラムが異なるため、途中からインデックスの使用・不使用を変更すると、変更前の値を取得できなくなります。
+
+== 型などの変更
+
+型ごとに別々のカラムにデータが格納されるため、途中から型を変更すると、変更前の値を取得できなくなります。（未設定扱いになります）
+
+インデックスを使用する属性と使用しない属性では、利用されるカラムが異なるため、途中からインデックスの使用・不使用を変更した場合も同様です。
+
 
 == 注意
 
