@@ -70,11 +70,12 @@ module MetaField
           query = scoped
           basenames.each{ |basename, where_cond|
             quoted_basename = connection.quote_string(basename.to_s)
+            join_table_name = "#{basename}_tbl"
             sub = MetaField::Meta.arel_table
             sub = sub.where(sub[:basename].eq(basename))
             sub = sub.where(where_cond) if where_cond
             sub = sub.project(Arel.sql("#{connection.quote_column_name('obj_id')} as #{ connection.quote_column_name(quoted_basename+'_obj_id') }, #{connection.quote_column_name(meta_fields[basename.to_sym][0])} as #{connection.quote_column_name(quoted_basename)}"))
-            query = query.joins("INNER JOIN (#{ sub.to_sql }) ON  #{connection.quote_table_name(table_name)}.#{connection.quote_column_name('id')} = #{connection.quote_column_name(quoted_basename+'_obj_id')}")
+            query = query.joins("INNER JOIN (#{ sub.to_sql }) as #{ connection.quote_table_name(join_table_name) } ON  #{connection.quote_table_name(table_name)}.#{connection.quote_column_name('id')} = #{ connection.quote_table_name(join_table_name) }.#{connection.quote_column_name(quoted_basename+'_obj_id')}")
           }
           query
         end
